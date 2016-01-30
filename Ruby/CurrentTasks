@@ -1,0 +1,189 @@
+TODO LIST:
+* Build Environment
+    - Allow customers to register build
+
+    - Build on MacOS
+
+    - Build on VM
+
+    - Build on Windows
+
+    - Dart integration
+
+    - Display Dart to the outside world
+
+
+* PC104 IDIO driver
+    Complete this according to the Comedi Spec
+    - Debug timeout issues related to this
+
+    - Get basic functionaltiy working
+
+    - Get IRQ working
+
+    - Unit Testing for comedi driver spec
+
+
+* USB Fixes
+    - Fix TestCase lib to find exact devices
+      I need this sample to find exactly one device that matches what we are look
+      ing for.
+      - Abilit to find this one device
+
+      - API for finding device
+
+
+    - Add fake initialization function for BIST(@build ) due: 2014-07-18
+
+      Essentially I want to be able to run a fake initialization and fake out the
+       behaviour of the card in question. Maybe , generate YAML representation of
+       the Config object, then you can perform an comparison of the YAML to see w
+      hether it matches something useful. Generate the YAML output for a sample r
+      un. depends: Replace Locking
+
+    - Add Logging
+
+    - Merge Code into main branch
+
+    - Refactor code to split into libusb and Kernel driver
+
+    - Use interface to DeviceTable
+
+
+* Build Android on Linux
+    Need to be able to perform a build on a linux system . Ideally , I want to be
+     able to take this image and put it on a micro SD. Not sure how hard this wil
+    l actually be to implement
+    - Modify the Android system to suit needs
+
+    - Perform a simple compliation
+      *This is currently failing* This was caused by using the wrong compiler. In
+      stead of the x86_64, use the i686
+
+    - Verify that android can in fact boot
+
+    - Get USB OTG working with Android device(@android @kernel @build @usb )
+      Connect USB peripherals to your Nexus One (aka. N1) Required hardware Roote
+      d Nexus One with QSD8250 SoC (my ZTE Blade and Huawei Ideos U8150 ports and
+       kernel & modules for the Galaxy Nexus i9250; threads from others xda-devel
+      opers for the G1/Desire/Incredible) USB OTG cable with Micro B plug (e.g., 
+      advantage: ID pin connected to ground for future auto detection) or Micro U
+      SB cable and adapter Powered USB 2.0 hub that provides its power to the ups
+      tream port (e.g.; detectable by the Nexus One being charged) If it doesn't:
+       USB Dual Power Cable (e.g.), since the Nexus One doesn't provide bus power
+       to the hub chip. Also see here. For mobile use: battery (e.g.) (measuremen
+      ts) Software Android version: 2.2.2; Kernel version: 2.6.32.9-27242-g4c0d54
+      7-dirty based on 27240-gbca5320; Build number: FRG83G Build from source git
+       clone http://github.com/sonic74/kernel_msm.git cd kernel_msm make -j2 ARCH
+      =arm CROSS_COMPILE=/android-ndk-r5c/toolchains/arm-eabi-4.4.0/prebuilt/linu
+      x-x86/bin/arm-eabi- Android version: 2.3.4; Kernel version: 2.6.35.7 based 
+      on g52630a3; Build number: GRJ22 Download binaries… boot.img (usbcore, eh
+      ci-hcd included in kernel) Kernel modules (Replace /system/lib/modules/bcm4
+      329.ko !) …or build from source (for QSD8250 SoC) # Don't let the archive
+       name confuse you tar xfz android-kernel_msm-v2.6.30-rc2-59463-g52630a3.tar
+      .gz cd android-kernel_msm-52630a3 tar xfj ehci-msm7201_N1-2_3_4.tbz make -j
+      2 ARCH=arm CROSS_COMPILE=/android-ndk-r5c/toolchains/arm-eabi-4.4.0/prebuil
+      t/linux-x86/bin/arm-eabi- Install kernel Boot from RAM (till next reset; on
+      ly possible when using modules)… /android-sdk/platform-tools/fastboot boo
+      t arch/arm/boot/zImage …or write to flash extract ramdisk.img from your R
+      A-passion nandroid backup … /getramdisk.py /boot.img /android-sdk/platfor
+      m-tools/fastboot -b 0x20000000 flash:raw boot arch/arm/boot/zImage /ramdisk
+      .img …or boot.img /android-sdk/platform-tools/fastboot flash boot /boot.i
+      mg Connect the USB cable now (else no devices are detected later), start Co
+      nnectBot, enable full screen for fb access and connect to Local insmod driv
+      ers/usb/core/usbcore.ko # Ignore the Unbalanced enabled for IRQ 58 stack tr
+      ace for now insmod drivers/usb/host/ehci-hcd.ko To substitute USB device mo
+      de functions with TCP/IP (or finish Andrew de Quincey's work or adapt USB M
+      ode) adb setprop service.adb.tcp.port 5555 stop adbd start adbd adb connect
+       IP_address Filesystem access Nexus One's On Air (Vista/7 WebDAV registry p
+      atch, ro) /android-sdk/tools/ddms RA-passion recovery PC's insmod fs/cifs/c
+      ifs.ko mount -t cifs -o username=username //IP_address/share /mnt/sdcard/cifs
+
+
+* Continuous Mode
+    - Add ability to write out floating point values
+
+    - API fix to allow calling language to loop over acquired values
+
+
+* Create Descriptive Parser
+    Parse a sample game [Event "?"] [Site "Berlin"] [Date "1852"] [Round "?"] [Wh
+    ite: "A. Anderssen"] [Black: "J. Dufresne"] [Result "1-0"] [Opening: "Evans G
+    ambit (ECO C52)"] 1. P-K4 P-K4 2. N-KB3 N-QB3 3. B-B4 B-B4 4. P-QN4 BxNP 5. P
+    -B3 B-R4 6. P-Q4 PxP 7. O-O P-Q6 8. Q-N3 Q-B3 9. P-K5 Q-N3 10. R-K1 KN-K2 11.
+     B-R3 P-N4 12. QxP R-QN1 13. Q-R4 B-N3 14. QN-Q2 B-N2? 15. N-K4 Q-B4? 16. BxQ
+    P Q-R4 17. N-B6 ch! PxN 18. PxP R-N1 19. QR-Q1! QxN 20. RxN ch NxR 21. QxP ch
+    ! KxQ 22. B-B5 dbl ch K-K1 23. B-Q7 ch K-B1 24. BxN mate 1-0
+
+* Git Coding
+    Get better at creating multiple branches and releasing code to the various on
+    es. Find a way to release to the master branch when you need to.
+    - Create a branch for actual usb driver version
+      Make a branch for trying to integrate the USB code into an actual Comedi Driver
+      - Extend Comedi Driver to multiple devices
+
+      - Port libusb driver into comedi
+
+      - Understand Comedi timing interface
+
+      - Write first Comedi driver
+
+
+    - Merge Master code with continuous
+
+
+* Mini PCIE Driver development
+    - Verifiy that new COM board works
+
+    - Work with Intel Gallileo
+
+
+* Rooted Android
+    Need to be able to root phone and install newer versions of the OS to get thi
+    s system to work correctly
+    - Install BusyBox
+
+    - Install new Android version ( 3.0 + ) on old phones
+
+    - Root device
+
+    - Verify that adb can control Android devices
+
+
+* Virtual Machines
+    Getting linux up and running on these machines. Goal being to setup a Linux b
+    uild on each system that can submit results to our Dash Server.
+    - Android
+
+    - Arch Linux
+
+    - Automated build on these virtual machines
+
+    - Automated packaging on virtual machines
+
+    - Debian Linux
+
+    - Fedora
+
+
+* AIOUSB Improvements
+    - Create Polymorphic library system(@polymorphic ) due: 2014-06-13
+
+      Library for loading / manipulating the command line utilities. In addition,
+       I want to start caring about how things actually get completed.
+
+    - Consolidate Finding Devices
+      Some goals for finding devices 1. Allow us to filter what we are searching 
+      for 2. Create samples for the various languages that can rely on these test
+       fixtures to report Mock data. 3. Make the API as identical as possible to 
+      the regular API. 4.
+
+    - Create Command line parsing library
+      - Examine a polymorphic solution
+
+      - Give user ability to specify +-10V on command line
+        I want a user to be able specify a type of range on the command line for 
+        how they run these cards.
+
+
+
