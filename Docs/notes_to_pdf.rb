@@ -134,7 +134,7 @@ def make_entry(entry,path)
 end
 
 def make_directory_entry(entry)
-  return entry.gsub(/^\d+_(.*)/,'\1').gsub(/_/,' ')
+  return entry.gsub(/^\d+_(.*)/,'\1').gsub(/_/,' ').gsub(/comma/,',')
 end
 
 
