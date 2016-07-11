@@ -1,0 +1,23 @@
+
+<p>
+  <b>Start Time:</b>
+  <%=h @task.start %>
+</p>
+
+<p>
+  <b>Completed:</b>
+  <%=h @task.completed %>
+</p>
+
+<p>
+  <b>Expected Completed:</b>
+  <%=h @task.expcomplete %>
+</p>
+
+<p>
+  <b>Entry:</b>
+  <%=h @task.entry %>
+</p>
+
+<%= link_to 'Edit', edit_task_path(@post) %> |
+<%= link_to 'Back', tasks_path %>
