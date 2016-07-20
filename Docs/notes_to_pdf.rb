@@ -116,6 +116,10 @@ def nicify_entry(entry)
 end
 
 def make_label(entry,path)
+  if entry =~ / /
+    entry.gsub!(/ /,'_')
+  end
+
   if path == "" 
     return "sec:#{entry.gsub(/^\d+_(.*)$/,'\1').gsub(/\.pdf$/,'')}"    
   else
@@ -134,7 +138,7 @@ def make_entry(entry,path)
 end
 
 def make_directory_entry(entry)
-  return entry.gsub(/^\d+_(.*)/,'\1').gsub(/_/,' ').gsub(/comma/,',')
+  return entry.gsub(/^\d+_?(?: *)(.*)/,'\1').gsub(/_/,' ').gsub(/comma/,',')
 end
 
 
@@ -204,6 +208,7 @@ def get_header
 \documentclass{article}
 \input{header}
 \usepackage[final]{pdfpages}
+\usepackage{grffile}
 \setboolean{@twoside}{false}
 \setcounter{secnumdepth}{-2}
 \newcounter{mycounter}
@@ -234,4 +239,5 @@ if __FILE__ == $PROGRAM_NAME
   opts = parse(ARGV)
   generate_pdf(opts)
 end
+
 
