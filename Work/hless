@@ -1,0 +1,4 @@
+#!/bin/sh
+
+ruby -pne '$_.gsub!(/^#(\d+)\n/) { "#{sprintf("%5d",($./2+1).to_i)}  " + Time.at("#{$1}".to_i).strftime("+%a %d %b %Y %H:%M:%S %p %Z %z") + " "  }' $@ 2>/dev/null | less
+
