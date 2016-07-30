@@ -29,12 +29,32 @@ catfiles = Dir.entries( startdir ).collect { |i| "#{startdir + i}" }.find_all { 
   end
 }
 
+hsh = {}
+
 if !catfiles.empty?
   catfiles.sort! { |a,b| File.stat(a).mtime <=> File.stat(b).mtime }
   fp = File.open("#{startdir}bash_history_#{sprintf("%.2d",curtime.year)}_#{sprintf("%.2d",curtime.month)}","w")
   catfiles.each { |f|
-    # lines = `cat #{f}`
-    fp.write(`cat #{f}`)
+    begin
+      fp2  = File.open(f)
+      while line = fp2.gets
+        if line =~ /^(\#\d+\s*)$/ 
+          nline = fp2.gets
+          hsh[$1] = nline
+        else
+          next
+        end
+      end
+    rescue Exception => e 
+      puts "#{e}...skipping file #{f}"
+      next
+    end
+    #lines = `cat #{f}`
+    #fp.write(`cat #{f}`)
+  }
+  hsh.keys.sort.each { |i| 
+    fp.write( i )
+    fp.write( hsh[i] )
   }
 
   fp.close()
