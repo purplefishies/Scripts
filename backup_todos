@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+for i in $(ls /home/jdamon/Todos/*.eml)
+do
+    entry=$(echo $i | perl -ne 's/.*todo-(.*?)\.eml$/$1/g;s/-/ /g;print;');
+    /bin/cp -f "$i" $HOME/Projects/org/todo/;
+    reffile=$(gvfs-ls -u $HOME/Projects/org/todo/ | grep "$(basename $i)");
+    echo -ne "\n* TODO $entry\n\n  - $reffile\n\n" >> $HOME/Projects/org/todo.org ;
+    cd $HOME/Projects/org/todo
+
+    elements=$(munpack $(basename $i))
+    IFS=$(echo -ne "\n\b")
+    for j in $elements
+    do
+        file=$(echo $j | perl -ane 'print "$F[0]\n";')
+        extension="${file##*.}"
+        filename="${file%.*}"
+        nfile="${filename}_$(sha1sum $file | perl -pne 's/^(.{8}).*/$1/;').${extension}"
+        mv $file $nfile
+        rm ${filename}.desc
+        urifile=$(gvfs-ls -u . | grep $nfile)
+        echo -ne "  - ${urifile}\n\n" >> $HOME/Projects/org/todo.org ;
+    done
+    /usr/local/bin/trash "$i"
+done

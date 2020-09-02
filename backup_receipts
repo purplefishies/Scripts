@@ -1,0 +1,81 @@
+#!/bin/bash
+
+#
+# 
+#
+if [[ ! -d $PRE_RECEIPTS_DIRECTORY ]] ; then
+    pre_receipt_dir=$HOME/Projects/org/PreReceipts
+else
+    pre_receipt_dir=$PRE_RECEIPTS_DIRECTORY
+fi
+
+
+if [[ ! -d $RECEIPTS_DIRECTORY ]] ; then
+    receipt_dir=$HOME/Projects/org/Receipts
+else
+    receipt_dir=$RECEIPTS_DIRECTORY
+fi
+
+if [[ ! -f $PRE_RECEIPTS_FILE ]] ; then
+    pre_receipt_file=$HOME/Projects/org/prereceipt.org
+else
+    pre_receipt_file=$PRE_RECEIPTS_FILE
+fi
+
+cd $pre_receipt_dir
+
+for i in $(ls *.eml)
+do
+    echo "processing file ${i}"
+    entry=$(echo $i | perl -ne 's/.*receipt-(.*?)\.eml$/$1/g;s/-/ /g;print;');
+    #/bin/cp -f "$i" ${receipt_dir}//;
+    #reffile=$(gvfs-ls -u ${final_receipts_dir} | grep "$(basename $i)");
+    AMOUNT=$(echo $i | perl -ne 'if ( s/^.*-a-((([A-z\d]{2,}-?))+)(-[atdef]-|$).*\Z/$1/ ) { tr/-/ /;print $_ * 0.01} else {print"";}')
+    TO=$(echo $i | perl -ne 'if ( s/^.*-t-((([A-z\d]{2,}-?))+)(-[atdef]-|$).*\Z/$1/ ) { tr/-/ /;print $_} else {print"";}') 
+    DATE=$(echo $i | perl -ne 'if ( s/^.*-d-((([A-z\d]{2,}-?))+)(-[atdef]-|$).*\Z/$1/ ) { tr/-/ /;print $_} else {print"";}') 
+    FROM=$(echo $i | perl -ne 'if ( s/^.*-f-((([A-z\d]{2,}-?))+)(-[atdef]-|$).*\Z/$1/ ) { tr/-/ /;print $_} else {print"";}') 
+    EXPENSE=$(echo $i | perl -ne 'if ( s/^.*-e-((([A-z\d]{2,}-?))+)(-[atdef]-|$).*\Z/$1/ ) { tr/-/ /;print $_} else {print"";}') 
+    if [[ "$DATE" == "" ]]; then
+      DATE=$(date '+%Y/%m/%d')     
+    fi
+    if [[ "$FROM" == "" ]]; then
+      FROM="credicard"
+    fi
+    if [[ "$EXPENSE" == "" ]] ; then
+        EXPENSE="Expenses:Miscelaneous"
+    fi
+    
+    echo -ne "\n* TODO ${entry}\n\n" >> ${pre_receipt_file} 
+    echo -ne "#+begin_src ledger\n" >> ${pre_receipt_file}
+    echo -ne "${DATE} * ${TO}\n" >> ${pre_receipt_file}
+
+    IFS=$(echo -ne "\n\b")
+    elements=$(munpack -C $pre_receipt_dir -q $(basename $i))
+    echo "REACHED"    
+    counter=""
+    echo "HERE"
+    for j in $elements
+    do
+        echo "j=${j}"
+
+        file=$(echo $j | perl -ane 'print "$F[0]\n";')
+        echo "File $file"
+        if [[ ! -f "$file" ]] ; then
+            continue
+        fi
+        extension="${file##*.}"
+        filename="${file%.*}"
+        nfile="${filename}_$(sha1sum $file | perl -pne 's/^(.{8}).*/$1/;').${extension}"
+        mv $file ${receipt_dir}/$nfile
+        rm ${filename}.desc
+        urifile=$(gvfs-ls -u ${receipt_dir} | grep $nfile)
+        echo -ne "    ; receipt${counter}: ${urifile}\n" >> ${pre_receipt_file}
+        counter=counter=$((counter+1))
+    done
+    echo -ne "    ${EXPENSE}    \$${AMOUNT}\n" >> ${pre_receipt_file}
+    echo -ne "    ${FROM}\n" >> ${pre_receipt_file}
+    echo -ne "#+end_src\n\n" >> ${pre_receipt_file}
+
+
+    /usr/local/bin/trash "$i"
+done

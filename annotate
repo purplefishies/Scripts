@@ -1,0 +1,78 @@
+#!/bin/bash
+# annotate <database> <engine> <seconds> \
+exec tcscid "$0" "$@"
+
+package require Expect
+
+proc analyze { position engine seconds } {
+  set variation ""; set engine_id ""; set eval ""
+  log_user 0
+  set timeout [expr $seconds + 5]
+  exp_spawn "$engine"
+  exp_send "uci\n"
+  exp_send "position fen $position\n"
+  exp_send "go movetime ${seconds}000\n"
+  exp_send "setoption name Threads value 4\n"
+  expect {
+    timeout {
+      puts stderr "timeout"
+      exp_send "quit\n"
+    }
+    "bestmove" {
+      exp_send "quit\n"
+    }
+    -re "id name \[^\r\n\]+" {
+      regsub ".*id name " $expect_out(buffer) "" engine_id
+      exp_continue
+    }
+    -re "score mate \[0-9\]+" {
+      regsub ".*score " $expect_out(buffer) "" eval
+      exp_continue
+    }
+    -re "score cp -*\[0-9\]+" {
+      regsub ".*score cp " $expect_out(buffer) "" eval
+      # convert cenipawn and adjust sign
+      if {[sc_pos side] == "black"} { set eval [expr {- $eval}] }
+      set eval [format "%+.2f" [expr {$eval / 100.0}]]
+      exp_continue
+    }
+    -re "pv \[^\r\n\]+" {
+      regsub ".*pv " $expect_out(buffer) "" variation
+      # engine output is e7e8q, addSan requires e7e8Q
+      set fix_promotions {"q" "Q" "r" "R" "n" "N" "b " "B "}
+      set variation [string map $fix_promotions $variation]
+      exp_continue
+    }
+  }
+  exp_close
+  exp_wait
+  return [list $variation $engine_id $eval]
+}
+
+set database [lindex $argv 0]
+set engine [lindex $argv 1]
+set seconds [lindex $argv 2]
+
+sc_base open $database
+set numGames [sc_base numGames]
+for {set i 1} {$i <= $numGames} {incr i} {
+  sc_game load $i
+  sc_move forward 6
+  while {[sc_pos isAt end] == 0} {
+    puts stderr "Game $i/$numGames, move [sc_pos moveNumber], [sc_pos side]"
+    set result [analyze [sc_pos fen] $engine $seconds]
+    puts stderr $result
+    # puts stdout [
+
+    set variation [lindex $result 0]
+    set engine_id [lindex $result 1]
+    set eval [lindex $result 2]
+
+    sc_var create
+    sc_move addSan $variation
+    sc_pos setComment "$engine_id: $eval"
+    sc_var exit
+    sc_move forward
+  }
+  puts stdout [sc_game pgn]
+}

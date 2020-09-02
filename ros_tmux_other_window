@@ -1,0 +1,5 @@
+#!/bin/sh
+
+tmux split-window "LD_LIBRARY_PATH=$LD_LIBRARY_PATH ROSCONSOLE_CONFIG_FILE=${ROSCONSOLE_CONFIG_FILE} gdb -q $GDB_ARGS --args $* ; tmux wait-for -S gdb_ros_done"
+
+tmux wait-for gdb_ros_done

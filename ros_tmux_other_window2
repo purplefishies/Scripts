@@ -1,0 +1,5 @@
+#!/bin/sh
+
+tmux split-window "gdb -q $GDB_ARGS --args $* ; tmux wait-for -S gdb_ros_done2"
+
+tmux wait-for gdb_ros_done2

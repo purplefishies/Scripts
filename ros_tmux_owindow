@@ -1,0 +1,4 @@
+#!/bin/sh
+
+tmux new-window "gdb -q -ex 'set \$TMUX_CLEANUP = 1' $GDB_ARGS --args $*"
+

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+tmux split-window "gdb -q -ex 'set \$TMUX_CLEANUP = 1' --args $*"
