@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+
+use File::Temp qw(tempfile);
+
+while(<>) {
+    chomp;
+    my ($fh ,$file) = tempfile();
+    open(CMD, "|gnuchess -g -q | perl -ne 'if( !/^(GNU|White|Time|^ +|^ *\$)/ ) { print; }'");
+    if ( -f $_ ) {
+        print CMD "epdload ${_}\nexit\n";
+
+    } else {
+        chomp;
+        print $fh "$_\n";
+        close($fh);
+        print CMD "epdload ${file}\nexit\n";
+    }
+    last;
+    close(CMD);
+}

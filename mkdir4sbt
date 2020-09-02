@@ -1,0 +1,25 @@
+#!/bin/bash
+
+
+if [ "$#" -ne 1 ] ; then
+    project="My Project"
+else
+    project=$@
+fi
+
+dirproject=$(echo ${project} | perl -ne 's/ /_/g;print;' )
+echo ${dirproject}
+
+mkdir -p ${dirproject}/src/{main,test}/{java,resources,scala}
+mkdir ${dirproject}/{lib,project,target}
+# Create initial file
+
+echo "name := \"${project}\"
+
+version := \"1.0\" 
+
+scalaVersion := \"2.10.0\"
+
+libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"" > ${dirproject}/build.sbt
+
+

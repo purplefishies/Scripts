@@ -1,0 +1,4 @@
+#!/bin/sh
+
+tmux split-window "gdb -q $GDB_ARGS --args $*"
+sleep 300000

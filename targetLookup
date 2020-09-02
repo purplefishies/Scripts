@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ "$1" == "" ] ; then
+    echo "Usage: $0 TARGET_NUMBER"
+    exit 1
+fi
+
+targetnum=$(android list targets | perl -ne 's/^-----+/\x0/g;print;' | perl  -n0e 'if(s/^.*?id: (\d+)\s+.*?API level:\s*(\d+).*$/$1 $2\n/gsm) {print;}' | grep -P "\d+ $1" )
+
+if [ "$targetnum" != "" ] ; then
+#    echo "TARETNUM=$targetnum"
+    echo $(echo ${targetnum} | perl -ane 'print $F[0];' )
+else
+    echo "ERROR!! target number not found"
+fi
+

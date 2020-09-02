@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cp $1 $1.bak
+
+export USE_IXHASH=1
+cat $1 | unique.pl | perl  -0400 -pne 's/#\d{10}\n(?=#\d{10}\n)/$1/gsm;' | sponge $1

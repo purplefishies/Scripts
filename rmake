@@ -1,0 +1,12 @@
+#!/bin/bash
+
+clear
+tmux clear-history
+unset HISTTIMEFORMAT
+export HISTFILENAME=~/.bash_history
+history -n 
+cmd=$(history | grep "catkin_make " | tail -1 | perl -ne 's/^\s+\d+\s+(\S.*)$/$1/g;print;')
+echo "COMMAND=${cmd}"
+eval "${cmd}"
+
+

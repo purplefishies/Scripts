@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+dirs={}
+
+STDIN.readlines.each { |line|
+  line.chomp!
+  dirs[(File.directory?(line) ? $_ : File.dirname(line))] = 1
+}
+
+puts dirs.keys.join("\n")
+
