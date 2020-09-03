@@ -9,9 +9,14 @@ end
 
 def rand_quote(file)
   begin
-    while (((tmp = File.read(file).split(/^%/).sample) =~ /^\s*$/) != 0 )
+    tmp = File.read(file).split(/^%/)
+    
+    while (((keep= tmp.sample) =~ /^[\s\n]*\Z/ms) == 0 )
     end
-    return tmp
+    # puts "KEEP: #{keep}"
+    keep.gsub!(/^[\s\n]+?(\[[^\]]+\])?[\s\n]*/s,'')
+    keep = "\n" + keep + "\n"
+    return keep
   rescue Exception => e
   end
 end
