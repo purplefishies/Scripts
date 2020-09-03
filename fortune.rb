@@ -13,20 +13,26 @@ def rand_quote(file)
     tmp = File.read(file).split(/^%/)
     
     #while (((keep= tmp[0]) =~ /^[\s\n]*\Z/ms) == 0 )
+    # (0..tmp.length-1).each { |i| 
     while (((keep= tmp.sample) =~ /^[\s\n]*\Z/ms) == 0 )
     end
-    #puts "KEEP: #{keep}"
-    #binding.pry
-    #puts "HERE"
     keep.gsub!(/^[\s\n]*?(\[[^\]]+\])?[\s\n]*/s,'')
-    #puts "KEEP: #{keep}"
     keep = "\n" + keep + "\n"
+  #puts "#{i}\t#{keep}"
+  #puts "KEEP: #{keep}"
+  #binding.pry
+  #puts "HERE"
+  #puts "KEEP: #{keep}"
+  #return keep
+    # }
     return keep
   rescue Exception => e
   end
 end
 
 #puts rand_quote(#
+#puts rand_quote(File.expand_path(ARGV[0]))
+#rand_quote(File.expand_path(ARGV[0]))
 
 puts rand_quote(ARGV.collect { |i|
   if File.file?(i)
