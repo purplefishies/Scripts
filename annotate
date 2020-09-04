@@ -1,18 +1,19 @@
 #!/bin/bash
 # annotate <database> <engine> <seconds> \
-exec tcscid "$0" "$@"
+exec tkscid "$0" "$@"
 
 package require Expect
+log_user 0
 
 proc analyze { position engine seconds } {
   set variation ""; set engine_id ""; set eval ""
-  log_user 0
+  #log_user 0
   set timeout [expr $seconds + 5]
   exp_spawn "$engine"
   exp_send "uci\n"
   exp_send "position fen $position\n"
+  exp_send "setoption name Threads value 4s\n"
   exp_send "go movetime ${seconds}000\n"
-  exp_send "setoption name Threads value 4\n"
   expect {
     timeout {
       puts stderr "timeout"
@@ -53,16 +54,21 @@ set database [lindex $argv 0]
 set engine [lindex $argv 1]
 set seconds [lindex $argv 2]
 
-sc_base open $database
-set numGames [sc_base numGames]
+if {[catch {sc_base open PGN $database} result]} {
+    puts stderr "Error opening database \"$database\": $result"
+    exit 1
+}
+
+set numGames [sc_base numGames [sc_base current]]
+#puts $numGames
+
 for {set i 1} {$i <= $numGames} {incr i} {
   sc_game load $i
   sc_move forward 6
   while {[sc_pos isAt end] == 0} {
     puts stderr "Game $i/$numGames, move [sc_pos moveNumber], [sc_pos side]"
     set result [analyze [sc_pos fen] $engine $seconds]
-    puts stderr $result
-    # puts stdout [
+    #puts stderr $result
 
     set variation [lindex $result 0]
     set engine_id [lindex $result 1]
