@@ -1,6 +1,6 @@
 #!/bin/bash
 # analyzefen <database> <engine> <seconds> \
-exec tcscid "$0" "$@"
+exec tkscid "$0" "$@"
 
 package require Expect
 
