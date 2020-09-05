@@ -5,6 +5,8 @@ exec tkscid "$0" "$@"
 package require Expect
 log_user 0
 
+
+
 proc analyze { position engine seconds } {
   set variation ""; set engine_id ""; set eval ""
   #log_user 0
