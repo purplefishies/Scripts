@@ -11,22 +11,23 @@ end
 def rand_quote(file)
   begin
     tmp = File.read(file).split(/^%/)
-    
+
     #while (((keep= tmp[0]) =~ /^[\s\n]*\Z/ms) == 0 )
     # (0..tmp.length-1).each { |i| 
-    while (((keep= tmp.sample) =~ /^[\s\n]*\Z/ms) == 0 )
+    while (((keep= tmp[(0..tmp.length-1).to_a.sample]) =~ /^[\s\n]*\Z/mx) == 0 )
     end
-    keep.gsub!(/^[\s\n]*?(\[[^\]]+\])?[\s\n]*/s,'')
+    keep.gsub!(/^[\s\n]*?(\[[^\]]+\])?[\s\n]*/x,'')
     keep = "\n" + keep + "\n"
-  #puts "#{i}\t#{keep}"
-  #puts "KEEP: #{keep}"
-  #binding.pry
-  #puts "HERE"
-  #puts "KEEP: #{keep}"
-  #return keep
+    #puts "#{i}\t#{keep}"
+    #puts "KEEP: #{keep}"
+    #binding.pry
+    #puts "HERE"
+    #puts "KEEP: #{keep}"
+    #return keep
     # }
     return keep
   rescue Exception => e
+    puts e
   end
 end
 
