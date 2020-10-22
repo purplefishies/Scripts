@@ -1,0 +1,17 @@
+#!/bin/bash
+# -*- mode: shell-script -*-
+
+
+echo "Yesterday"
+
+pandoc -f markdown  -o -  -i <(${HOST_FOR_ORG} between.pl -f ${WORK_JOURNAL_FILE} -s $(ruby -rchronic -e 'puts Chronic.parse("yesterday").strftime("%Y-%m-%d %A" )')  | grep :status: | perl -ne 's/:status://g;s/^\*{3}//g;while(s/\*\*/    \*/g){};print;')
+
+
+echo -ne "\n\nToday\n"
+
+pandoc -f markdown  -o -  -i <(${HOST_FOR_ORG} between.pl -f ${WORK_JOURNAL_FILE} -s $(ruby -rchronic -e 'puts Chronic.parse("today").strftime("%Y-%m-%d %A" )')  | grep :today: | perl -ne 's/:status://g;s/^\*{3}//g;while(s/\*\*/    \*/g){};print;')
+
+
+echo -ne "\n\nBlockers\n"
+
+pandoc -f markdown  -o -  -i <(${HOST_FOR_ORG} between.pl -f ${WORK_JOURNAL_FILE} -s $(ruby -rchronic -e 'puts Chronic.parse("yesterday").strftime("%Y-%m-%d %A" )')  | grep :blocker | perl -ne 's/:blocker[s]?://g;s/^\*{3}//g;while(s/\*\*/    \*/g){};push(@s,$_);print;END{if($#s < 0) { print "* None\n"; }}')
