@@ -18,6 +18,7 @@ end
 
 while gets
   $_.gsub!(/(  PASSED)/,green('\1'))
+  $_.gsub!(/(  OK)/,green('\1'))
   $_.gsub!(/(  FAILED)/,red('\1'))
   $_.gsub!(/(  ERROR)/,red('\1'))
   $_.gsub!(/\d+ FAILED.*/) { |s| red s }
