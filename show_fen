@@ -2,19 +2,28 @@
 
 use File::Temp qw(tempfile);
 
-while(<>) {
-    chomp;
-    my ($fh ,$file) = tempfile();
-    open(CMD, "|gnuchess -g -q | perl -ne 'if( !/^(GNU|White|Time|^ +|^ *\$)/ ) { print; }'");
-    if ( -f $_ ) {
-        print CMD "epdload ${_}\nexit\n";
-
-    } else {
+my ($fh ,$file) = tempfile();
+open(CMD, "|gnuchess -g -q | perl -ne 'if( !/^(GNU|White|Time|^ +|^ *\$)/ ) { print; }'");
+if ( ! -f $ARGV[0]) {
+    $ff = $file;
+    print $fh "$ARGV[0]\n";
+} else {
+    while(<>) {
         chomp;
-        print $fh "$_\n";
-        close($fh);
-        print CMD "epdload ${file}\nexit\n";
+        if ( -f $_ ) {
+            #print CMD "epdload ${_}\nexit\n";
+            $ff = $_;
+        } else {
+            chomp;
+            print $fh "$_\n";
+            # close($fh);
+            # print CMD "epdload ${file}\nexit\n";
+            $ff = ${file}
+        }
+        last;
     }
-    last;
-    close(CMD);
 }
+close($fh);
+print CMD "epdload ${ff}\nexit\n";
+
+close(CMD);
