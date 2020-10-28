@@ -14,8 +14,8 @@ proc analyze { position engine seconds } {
   exp_spawn "$engine"
   exp_send "uci\n"
   exp_send "position fen $position\n"
-  exp_send "setoption name Threads value 4s\n"
-  exp_send "go movetime ${seconds}000\n"
+  exp_send "setoption name Threads value 8s\n"
+  exp_send "go movetime ${seconds}\n"
   expect {
     timeout {
       puts stderr "timeout"
@@ -55,18 +55,28 @@ proc analyze { position engine seconds } {
 set database [lindex $argv 0]
 set engine [lindex $argv 1]
 set seconds [lindex $argv 2]
+set startingply [lindex $argv 3]
+
+proc usage {} {
+    puts stderr "Usage: annotate FEN ENGINE SECONDS STARTINGPLY"
+    exit
+}
+
 
 if {[catch {sc_base open PGN $database} result]} {
-    puts stderr "Error opening database \"$database\": $result"
+    usage
     exit 1
 }
 
+set startingply [ expr { $startingply == "" ? 6 : $startingply } ]
+set seconds [expr { $seconds == "" ? 1 : $seconds  }]
+set seconds [expr { $seconds * 1000 }]
 set numGames [sc_base numGames [sc_base current]]
-#puts $numGames
+
 
 for {set i 1} {$i <= $numGames} {incr i} {
   sc_game load $i
-  sc_move forward 6
+  sc_move forward $startingply
   while {[sc_pos isAt end] == 0} {
     puts stderr "Game $i/$numGames, move [sc_pos moveNumber], [sc_pos side]"
     set result [analyze [sc_pos fen] $engine $seconds]
