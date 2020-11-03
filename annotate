@@ -87,7 +87,9 @@ for {set i 1} {$i <= $numGames} {incr i} {
     set eval [lindex $result 2]
 
     sc_var create
-    sc_move addSan $variation
+    if {[catch {sc_move addSan $variation} result]} {
+           puts stderr "Can't add variation ${variation}"
+    }
     sc_pos setComment "$engine_id: $eval"
     sc_var exit
     sc_move forward
