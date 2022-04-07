@@ -1,0 +1,96 @@
+#!/usr/bin/env ruby
+#-*- mode: ruby -*-
+
+
+require 'optparse'
+require 'ostruct'
+
+
+
+def parse(argv)
+  options         = OpenStruct.new
+  options.subject = "Test result"
+  options.sguser  = ENV['SENDGRID_USERNAME']
+  options.sgpass  = ENV['SENDGRID_PASSWORD']
+  options.operators = []
+  options.null_separated = false
+  options.reverse = false
+
+  optparse = OptionParser.new {  |opts|   
+    # Set a banner, displayed at the top   # of the help screen.   
+    opts.banner = "Usage: #{$0} [options]" 
+    opts.separator ""
+    opts.separator "Specific options:"
+
+
+    opts.on("-0", "--zero", "\\0 separated fields" ) do 
+      $/ = "\0"
+      options.null_separated = true
+    end
+    
+    opts.on("-m", "--mtime", "Sort on mtime" ) do 
+      options.operators.push("mtime")
+    end
+
+    opts.on("-a", "--atime", "Sort on atime" ) do 
+      STDERR.puts "Using atime"
+      options.operators.push("atime")
+    end
+
+    opts.on("-a", "--ctime", "Sort on atime" ) do 
+      STDERR.puts "Using ctime"
+      options.operators.push("ctime")
+    end
+
+
+    opts.on("-R", "--reverse", "Reverse" ) do 
+      #STDERR.puts "Using Reverse"
+      options.reverse = true
+    end
+
+
+    opts.on("-b", "--blocks", "Sort on blocks" ) do 
+      STDERR.puts "Using blocks"
+      options.operators.push("blocks")
+    end
+
+
+    opts.on( "-h", "--help", "Prints help" ) do 
+      puts opts
+      exit
+    end
+
+  }
+  begin
+    optparse.parse!( argv )
+  rescue OptionParser::ParseError => e 
+    STDERR.puts e.message,"\n", op
+    exit(-1)
+  end
+  options
+end
+
+
+options = parse(ARGV)
+files=[]
+while STDIN.gets
+  t = $_
+  t.chomp!
+  t.strip!
+  files.push(t)
+end
+#puts "NumFiles #{files.length}\n#{files}\n#{options.null_separated}\n"
+#puts "Foo #{files}"
+STDOUT.sync = true
+for op in options.operators 
+  if options.reverse 
+    #STDERR.puts "Using reverse"
+    files.sort! { |a,b| File.stat(b).send(op) <=> File.stat(a).send(op) }
+  else 
+    files.sort! { |a,b| File.stat(a).send(op) <=> File.stat(b).send(op) }
+  end
+end
+
+
+STDOUT.write files.join( options.null_separated ? "\0" : "\n")
+
