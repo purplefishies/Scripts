@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-for i in $(ls /home/jdamon/Todos/*.eml)
+for i in $(ls /home/jdamon/Todos/*.eml 2>/dev/null)
 do
     entry=$(echo $i | perl -ne 's/.*todo-(.*?)\.eml$/$1/g;s/-/ /g;print;');
     /bin/cp -f "$i" $HOME/Projects/org/todo/;
