@@ -56,6 +56,8 @@ Getopt::Long::Configure('no_auto_abbrev', 'pass_through');
 GetOptions(\%opts,
            "start|s=s",
            "end|e=s",
+           "excludeend",
+           "excludestart",
            "o=s",
            "multiple|m",
            "file|f=s@",
@@ -173,14 +175,20 @@ sub Read_File(*\%)
             next;
         } elsif( !defined($state) && $_ =~ m/$opts->{start}/ ) {
             if( !$exclude ) {
-                print ;
+                if ( $opts->{excludestart} ){}
+                else {
+                    print ;
+                }
             }
             $state = "middle";
         } elsif( $state eq "middle" && $_ !~ /$opts->{end}/ ) {
             print ;
         } elsif( $state eq "middle" &&  ( defined $opts->{end} && $_ =~ /$opts->{end}/ ))   {
             if( !$exclude ) {
-                print ;
+                if ( $opts->{excludeend} ) {}
+                else {
+                    print ;
+                }
             }
             undef( $state );
             if( !$multiple ) {
@@ -238,6 +246,10 @@ Allow filtering of multiple sections
 =item [B<-include>]
 
 Include starting and end lines that match regexes
+
+=item [B<-0>]
+
+Separate fields using null character
 
 =item [B<-help|-h>]
 
