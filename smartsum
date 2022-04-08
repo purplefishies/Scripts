@@ -1,0 +1,101 @@
+#!/bin/bash
+#-*- mode: shell-script -*-
+
+amount=512
+
+function SumFile {
+    IFS=$(echo -ne "\n\b")
+    size=$(stat -c %s "$@")
+    if [[ $size -lt $amount  ]] ;then
+        sum=$({ echo $size; dd if="${1}" 2>/dev/null; } | shasum | cut -d' ' -f 1) 
+    else
+        sum=$({ echo $size; dd if="${1}" count=1 2>/dev/null; dd if="${1}" bs=1 count=$amount skip=$(($size - $amount)) 2>/dev/null; } | shasum | cut -d' ' -f 1)
+    fi
+    echo -ne "${sum}\t${1}\n"
+}
+
+
+function VerifyFiles {
+    # badsum=0
+    # missing=0
+    while IFS= read -r line
+    do
+        #echo "$line"
+        sum=$(echo $line | perl -ane 'print $F[0];')
+        file=$(echo $line | perl -ane 's/^\S+\s+(\S.*)$/$1/g;print;' )
+        #echo "Sum:$sum\tFile:${file}"
+        tmpsum=$(SumFile "$file" | perl -ane 'print $F[0];')
+        if [[ ! -f "${file}" ]] ; then
+            echo "smartsum: ${file}: No such file or directory"
+            missing=$(( $missing+1))
+        elif [[ "$tmpsum" == "$sum" ]] ; then
+            echo "${file}: OK"
+        else 
+            echo "${file}: Bad"
+            badsum=$(($badsum+1))
+        fi
+    done < $file
+    if [[ ! -z "$missing" ]] ; then
+        echo "smartsum: WARNING: $missing listed file could not be read"
+    fi
+    
+    if [[ ! -z "$badsum" ]] ; then
+        echo "smartsum: WARNING: $badsum computed checksum did NOT match"
+    fi
+
+    # for file in "$@"
+    # do
+    #     size=$(stat -c %s "${file}")
+    #     if [[ $size -lt $amount  ]] ;then
+    #         sum=$({ echo $size; dd if="${file}" 2>/dev/null; } | shasum | cut -d' ' -f 1) 
+    #     else
+    #         sum=$({ echo $size; dd if="${file}" count=1 2>/dev/null; dd if="${file}" bs=1 count=$amount skip=$(($size - $amount)) 2>/dev/null; } | shasum | cut -d' ' -f 1)
+    #     fi
+    #     echo -ne "${sum}\t${file}\n"
+    # done
+}
+
+function Help {
+   # Display Help
+   echo "A fast replacement for md5sum/shasum. Useful for gross level checks that files are ok"
+   echo
+   echo "Syntax: $0 [-c|-h]"
+   echo "options:"
+   echo "-c FILE    Verify smartsum against files"
+   echo "-0         Binary separated files"
+   echo "-h          Print this Help."
+   echo ""
+}
+
+while getopts ":hc:" option; do
+   case $option in
+      h) # display Help
+         Help
+         exit;;
+      c) #Verify file
+          file=${OPTARG}
+          VerifyFiles
+          exit;;
+      0) #Verify file
+          IFS=$(echo -ne "\b\n")
+          exit;;
+      \?)# Invalid
+         echo "Invalid option":
+         exit;;
+         
+   esac
+done
+
+for file in "$@"
+do
+    SumFile "${file}"
+    # size=$(stat -c %s "${file}")
+    # if [[ $size -lt $amount  ]] ;then
+    #     sum=$({ echo $size; dd if="${file}" 2>/dev/null; } | shasum | cut -d' ' -f 1) 
+    # else
+    #     sum=$({ echo $size; dd if="${file}" count=1 2>/dev/null; dd if="${file}" bs=1 count=$amount skip=$(($size - $amount)) 2>/dev/null; } | shasum | cut -d' ' -f 1)
+    # fi
+    # echo -ne "${sum}\t${file}\n"
+done
+
+
