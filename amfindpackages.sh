@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 RED=$(printf "\033[38;5;197m\n")
 RESET=$(tput sgr0 )
 GREEN=$(printf "\033[38;5;29m\n")
