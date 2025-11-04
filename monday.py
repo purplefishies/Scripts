@@ -39,7 +39,11 @@ def run_query(query: str, variables: dict = None):
 # Boards Commands
 # -------------------------------
 @boards_app.command("list")
-def list_boards():
+def list_boards(show_subitems: bool = typer.Option(
+    False,
+    "--show-subitems",
+    help="Include subitem-only boards (names starting with 'Subitems of ...')"
+)):
     """
     List all boards: <id> : <name>
     """
@@ -52,8 +56,14 @@ def list_boards():
     }
     """
     data = run_query(query)
+
     for board in data["boards"]:
-        typer.echo(f"{board['id']} : {board['name']}")
+        name = board["name"]
+        # Hide subitems unless flag is set
+        if not show_subitems and name.startswith("Subitems of"):
+            continue
+
+        typer.echo(f"{board['id']} : {name}")
 
 @boards_app.command("listall")
 def list_board_items(board_id: int):
