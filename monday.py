@@ -3,6 +3,8 @@ import os
 import sys
 import requests
 import typer
+from rich import print  # <-- add this at the top of the file
+
 
 app = typer.Typer(help="Monday.com CLI tool for boards, tasks, and notes")
 boards_app = typer.Typer(help="Work with boards")
@@ -65,8 +67,16 @@ def list_boards(show_subitems: bool = typer.Option(
 
         typer.echo(f"{board['id']} : {name}")
 
+
 @boards_app.command("listall")
-def list_board_items(board_id: int):
+def list_board_items(
+    board_id: int,
+    colorize: bool = typer.Option(
+        False,
+        "--colorize",
+        help="Colorize task names (green = done, orange/red = not done)"
+    ),
+):
     """
     List all tasks on a board: <id> : <name>
     """
@@ -77,16 +87,41 @@ def list_board_items(board_id: int):
           items {{
             id
             name
+            column_values {{
+              id
+              text
+            }}
           }}
         }}
       }}
     }}
     """
+
     data = run_query(query)
     items = data["boards"][0]["items_page"]["items"]
-    typer.echo(f"Board {board_id} items:")
+
+    print(f"[bold]Board {board_id} items:[/bold]")
+
     for item in items:
-        typer.echo(f"{item['id']} : {item['name']}")
+        status_text = ""
+        # fetch the FIRST status column if present
+        for col in item["column_values"]:
+            if "status" in col["id"].lower():  # covers "status", "Status", custom ids
+                status_text = col["text"]
+                break
+
+        name = item["name"]
+
+        if colorize:
+            if status_text.lower() in ("done", "complete", "closed", "finished"):
+                colorized_name = f"[bold green]{name}[/bold green]"
+            else:
+                colorized_name = f"[bold #ff6600]{name}[/bold #ff6600]"
+        else:
+            colorized_name = name
+
+        print(f"{item['id']} : {colorized_name}")
+
 
 # -------------------------------
 # Items Commands (kept flat)
