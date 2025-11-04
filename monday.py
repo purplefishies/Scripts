@@ -102,25 +102,29 @@ def list_board_items(
 
     print(f"[bold]Board {board_id} items:[/bold]")
 
+
+    max_width = max(len(item["id"]) for item in items)
+
     for item in items:
         status_text = ""
-        # fetch the FIRST status column if present
         for col in item["column_values"]:
-            if "status" in col["id"].lower():  # covers "status", "Status", custom ids
+            if "status" in col["id"].lower():
                 status_text = col["text"]
                 break
 
         name = item["name"]
 
+        # Colorize only the name
         if colorize:
             if status_text.lower() in ("done", "complete", "closed", "finished"):
-                colorized_name = f"[bold green]{name}[/bold green]"
+                name = f"[bold green]{name}[/bold green]"
             else:
-                colorized_name = f"[bold #ff6600]{name}[/bold #ff6600]"
-        else:
-            colorized_name = name
+                name = f"[bold #ff6600]{name}[/bold #ff6600]"
 
-        print(f"{item['id']} : {colorized_name}")
+        # Right-align and pad ID based on max width
+        padded_id = item["id"].rjust(max_width)
+
+        print(f"{padded_id} : {name}")
 
 
 # -------------------------------
