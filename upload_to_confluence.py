@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-Upload HTML + images to Confluence.
-
-Features:
-- Parses HTML
-- Uploads images as attachments
-- Rewrites <img src="..."> to Confluence attachment URLs
-- Creates or updates a Confluence page
-- Reads defaults from ~/.confluencerc (TOML)
-- CLI args override config values
+Upload images in an exported HTML file to Confluence,
+rewrite <img src> paths to uploaded attachments,
+then create or update the Confluence page.
 
 Usage:
-  ./upload_to_confluence.py --page "Cloudsmith Docs" --html ./cloudsmith.html
-  ./upload_to_confluence.py --page Test --html foo.html --config ./custom_config.toml
+    ./upload_to_confluence.py --page "Docs" --html page.html
+    ./upload_to_confluence.py --page "Docs" --html page.html --url https://site/wiki
 """
 
 import os
@@ -24,113 +18,125 @@ from atlassian import Confluence
 
 app = typer.Typer(help="Upload HTML + images to Confluence")
 
-DEFAULT_CONFIG = Path.home() / ".confluencerc"
+DEFAULT_CONFIG = Path("~/.confluencerc").expanduser()
 
 
-def load_config(config_path: Path | None):
-    """Load TOML config; supports default fallback."""
-    if config_path and config_path.exists():
-        return toml.load(config_path)
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-    if DEFAULT_CONFIG.exists():
-        return toml.load(DEFAULT_CONFIG)
+def load_config(config_path: Path):
+    return toml.load(config_path) if config_path.exists() else {}
 
-    return {}  # No config found
 
+def upsert_page(confluence, space: str, title: str, html: str) -> str:
+    """
+    Ensure that the page exists, then update its contents.
+    Returns the page_id.
+    """
+    page = confluence.get_page_by_title(space, title)
+
+    if not page:
+        typer.secho(f"➕ Creating page '{title}' in space '{space}'", fg=typer.colors.GREEN)
+        page = confluence.create_page(
+            space=space,
+            title=title,
+            body=html,
+            parent_id=None,
+        )
+
+    page_id = page["id"]
+
+    typer.secho(f"✏️  Updating '{title}' (id={page_id})", fg=typer.colors.GREEN)
+    confluence.update_or_create(
+        parent_id=page_id,
+        title=title,
+        body=html,
+    )
+
+    return page_id
+
+
+# ---------------------------------------------------------------------------
+# Main Typer command
+# ---------------------------------------------------------------------------
 
 @app.command()
 def upload(
     page: str = typer.Option(..., "--page", "-p", help="Confluence page title"),
     html: Path = typer.Option(..., "--html", "-h", exists=True, help="HTML file to publish"),
     url: str = typer.Option(None, "--url", help="Override Confluence URL"),
-    config: Path = typer.Option(None, "--config", "-c", help="Optional .confluencerc TOML config file"),
+    config: Path = typer.Option(DEFAULT_CONFIG, "--config", "-c", help="TOML config file", show_default=True),
 ):
     """
-    Upload HTML + images to Confluence, creating or updating the page.
+    Upload images referenced in HTML to Confluence and publish the page.
     """
 
-    # --- Load TOML config (custom > default ~/.confluencerc) ---
+    # ------------------------------------
+    # Load Configuration
+    # ------------------------------------
     cfg = load_config(config)
 
-    confluence_url = url or cfg.get("CONFLUENCE_URL")
-    space_key = cfg.get("SPACE_KEY")
-    auth_email = cfg.get("AUTH_EMAIL")
+    CONFLUENCE_URL = url or cfg.get("CONFLUENCE_URL")
+    SPACE_KEY      = cfg.get("SPACE_KEY")
+    AUTH_EMAIL     = cfg.get("AUTH_EMAIL")
+    API_TOKEN      = os.getenv("ATLASSIAN_API_TOKEN")
 
-    api_token = os.getenv("ATLASSIAN_API_TOKEN")
-
-    # --- Validate required config + token ---
-    missing = []
-    if not confluence_url: missing.append("CONFLUENCE_URL")
-    if not space_key:      missing.append("SPACE_KEY")
-    if not auth_email:     missing.append("AUTH_EMAIL")
-    if not api_token:      missing.append("ATLASSIAN_API_TOKEN (env var)")
-
-    if missing:
-        typer.secho("❌ Missing required settings:", fg=typer.colors.RED)
-        for key in missing:
-            typer.secho(f"   - {key}", fg=typer.colors.RED)
-        typer.echo("\nFix by adding to ~/.confluencerc or --config TOML:")
-        typer.echo("\nExample TOML (~/.confluencerc):\n")
-        typer.echo("""\
-AUTH_EMAIL = "you@company.com"
-CONFLUENCE_URL = "https://your-company.atlassian.net/wiki"
-SPACE_KEY = "ENG"
-        """)
+    if not API_TOKEN:
+        typer.secho("❌ ATLASSIAN_API_TOKEN not set in environment", fg=typer.colors.RED)
         raise typer.Exit(1)
 
-    typer.secho(f"🔗 Connecting to: {confluence_url}", fg=typer.colors.BLUE)
+    if not (CONFLUENCE_URL and AUTH_EMAIL and SPACE_KEY):
+        typer.secho("❌ Missing required config keys: AUTH_EMAIL, CONFLUENCE_URL, SPACE_KEY", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    typer.secho(f"🔗 Connecting to Confluence: {CONFLUENCE_URL}", fg=typer.colors.BLUE)
 
     confluence = Confluence(
-        url=confluence_url,
-        username=auth_email,
-        password=api_token,
+        url=CONFLUENCE_URL,
+        username=AUTH_EMAIL,
+        password=API_TOKEN,
+        cloud=True,
     )
 
-    # --- Load HTML content ---
-    html_str = html.read_text(encoding="utf-8")
-    soup = BeautifulSoup(html_str, "html.parser")
+    # ------------------------------------
+    # Load and parse HTML
+    # ------------------------------------
+    soup = BeautifulSoup(html.read_text(encoding="utf-8"), "html.parser")
+    html_dir = html.parent
 
-    # --- Find page (or create new) ---
-    page_info = confluence.get_page_by_title(space_key, page)
-    page_id = page_info["id"] if page_info else None
-
-    typer.secho(
-        "✏️  Updating page..." if page_id else "➕ Creating page...",
-        fg=typer.colors.GREEN,
-    )
-
-    # --- Upload images ---
+    # ------------------------------------
+    # Upload <img> files as attachments
+    # ------------------------------------
     for img in soup.find_all("img"):
         src = img.get("src")
         if not src:
             continue
 
-        local = Path(src.strip("./"))  # clean up relative paths
+        local_img = (html_dir / src).resolve()
 
-        if not local.exists():
-            typer.secho(f"⚠️ Missing image: {local}", fg=typer.colors.YELLOW)
+        if not local_img.exists():
+            typer.secho(f"⚠️  Missing image: {local_img}", fg=typer.colors.YELLOW)
             continue
 
-        filename = local.name
-        typer.secho(f"📤 Uploading image: {filename}", fg=typer.colors.CYAN)
+        typer.secho(f"📤 Uploading image: {local_img}", fg=typer.colors.BLUE)
 
-        confluence.attach_file(
-            page_id or 0,  # Confluence API needs an ID; works even on first push
-            file=str(local),
-            name=filename,
-        )
+        # We must ensure page exists BEFORE uploading
+        page_id = confluence.get_page_by_title(SPACE_KEY, page)
+        if page_id:
+            page_id = page_id["id"]
+        else:
+            page_id = upsert_page(confluence, SPACE_KEY, page, "<p>Temporary placeholder</p>")
 
-        img["src"] = f"{confluence_url}/download/attachments/{page_id}/{filename}?api=v2"
+        url = confluence.attach_file(local_img, page_id=page_id)
 
-    # Final HTML update
+        img["src"] = url  # rewrite HTML to use Confluence URL
+
+    # ------------------------------------
+    # Commit HTML
+    # ------------------------------------
     final_html = str(soup)
-
-    confluence.update_or_create(
-        parent_id=None,
-        title=page,
-        space=space_key,
-        body=final_html,
-    )
+    upsert_page(confluence, SPACE_KEY, page, final_html)
 
     typer.secho("✅ Upload complete!", fg=typer.colors.GREEN)
 
