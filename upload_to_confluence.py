@@ -2,7 +2,6 @@
     cfg = load_config(config)
 
 
-
     CONFLUENCE_URL = url or cfg.get("CONFLUENCE_URL")
     SPACE_KEY      = cfg.get("SPACE_KEY")
     AUTH_EMAIL     = cfg.get("AUTH_EMAIL")
