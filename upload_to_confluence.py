@@ -30,22 +30,33 @@ def load_config(config_path: Path):
         return toml.load(config_path)
     return {}
 
-
 def upsert_page(confluence, space: str, title: str, html: str) -> str:
     """
     Ensure the Confluence page exists, then update its contents.
-    Returns the page_id.
     """
     page = confluence.get_page_by_title(space, title)
+
     if not page:
         typer.secho(f"➕ Creating page '{title}' in space '{space}'", fg=typer.colors.GREEN)
-        page = confluence.create_page(space=space, title=title, body=html, parent_id=None)
+        page = confluence.create_page(
+            space=space,
+            title=title,
+            body=html,
+            representation="storage",
+            parent_id=None,
+        )
 
     page_id = page["id"]
-    typer.secho(f"✏️  Updating '{title}' (id={page_id})", fg=typer.colors.GREEN)
-    confluence.update_or_create(parent_id=page_id, title=title, body=html)
-    return page_id
 
+    typer.secho(f"✏️ Updating '{title}' (id={page_id})", fg=typer.colors.GREEN)
+    confluence.update_or_create(
+        parent_id=page_id,
+        title=title,
+        body=html,
+        representation="storage",
+    )
+
+    return page_id
 
 # ------------------------------------------------------------
 # Command
