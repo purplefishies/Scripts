@@ -58,6 +58,52 @@ def upsert_page(confluence, space: str, title: str, html: str) -> str:
 
     return page_id
 
+def fix_internal_anchors_and_links(soup: BeautifulSoup, page_title: str):
+    """
+    - For every element with an id=..., insert an Anchor macro:
+        <ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">id</ac:parameter></ac:structured-macro>
+    - Rewrite <a href="#id">Text</a> to a Confluence storage link:
+        <ac:link><ri:page ri:content-title="..."/><ri:anchor ri:anchor="id"/><ac:plain-text-link-body>Text</ac:plain-text-link-body></ac:link>
+    """
+    added = set()
+
+    # 1) Insert anchor macros for all ids
+    for el in soup.select('[id]'):
+        anchor = el.get('id')
+        if not anchor or anchor in added:
+            continue
+        # Confluence anchor names must be plain text; your org ids are fine as-is
+        macro = soup.new_tag("ac:structured-macro")
+        macro.attrs["ac:name"] = "anchor"
+        param = soup.new_tag("ac:parameter")
+        param.attrs["ac:name"] = ""
+        param.string = anchor
+        # Put the macro immediately before the target element
+        el.insert_before(macro.append(param) or macro)
+        added.add(anchor)
+
+    # 2) Rewrite intra-page links
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if not href.startswith("#"):
+            continue
+        anchor = href[1:]
+        text = a.get_text() or anchor
+
+        ac_link = soup.new_tag("ac:link")
+        ri_page = soup.new_tag("ri:page")
+        ri_page.attrs["ri:content-title"] = page_title
+        ri_anchor = soup.new_tag("ri:anchor")
+        ri_anchor.attrs["ri:anchor"] = anchor
+        body = soup.new_tag("ac:plain-text-link-body")
+        body.string = text
+
+        ac_link.append(ri_page)
+        ac_link.append(ri_anchor)
+        ac_link.append(body)
+        a.replace_with(ac_link)
+
+
 # ------------------------------------------------------------
 # Command
 # ------------------------------------------------------------
