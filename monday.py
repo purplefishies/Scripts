@@ -149,9 +149,11 @@ def update(
         typer.secho("❌ You must provide either a note or --set-status.", fg="red")
         raise typer.Exit(1)
 
-    # -----------------------------
-    # Add a note (optional)
-    # -----------------------------
+    #
+    # ----------------------------------------
+    # Add note (optional)
+    # ----------------------------------------
+    #
     if note:
         mutation = """
         mutation($item_id: ID!, $note: String!) {
@@ -163,11 +165,12 @@ def update(
         data = run_query(mutation, {"item_id": str(item_id), "note": note})
         typer.secho(f"📝 Added note {data['create_update']['id']}", fg="cyan")
 
-    # -----------------------------
-    # Update Status column (optional)
-    # -----------------------------
+    #
+    # ----------------------------------------
+    # Update Status (optional)
+    # ----------------------------------------
+    #
     if set_status:
-        # ✅ MAPPING uses the REAL labels from your board
         status_map = {
             "DONE": "Done",
             "BLOCKED": "Blocked",
@@ -182,7 +185,7 @@ def update(
 
         target_status = status_map[key]
 
-        # 1) Fetch board ID for this item
+        # 1) Look up board ID
         board_query = """
         {
           items(ids: %s) {
@@ -191,12 +194,11 @@ def update(
         }
         """ % item_id
 
-        board_data = run_query(board_query)
-        board_id = board_data["items"][0]["board"]["id"]
+        board_id = run_query(board_query)["items"][0]["board"]["id"]
 
-        # 2) Set the status column
+        # 2) Set the status — IMPORTANT: value MUST be a STRING containing JSON
         mutation = """
-        mutation($board_id: ID!, $item_id: ID!, $value: JSON!) {
+        mutation($board_id: ID!, $item_id: ID!, $value: String!) {
           change_simple_column_value(
             board_id: $board_id,
             item_id: $item_id,
@@ -208,12 +210,12 @@ def update(
         }
         """
 
-        value_json = {"label": target_status}
+        value_string = f'{{"label":"{target_status}"}}'   # <-- JSON as string
 
         run_query(mutation, {
             "board_id": str(board_id),
             "item_id": str(item_id),
-            "value": value_json,
+            "value": value_string,
         })
 
         typer.secho(f"✅ Updated status → {target_status}", fg="green")
