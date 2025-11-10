@@ -131,35 +131,6 @@ def list_board_items(
 # Items Commands (kept flat)
 # -------------------------------
 @app.command()
-def show(item_id: int):
-    """
-    Show all updates (notes) for a task
-    """
-    query = f"""
-    {{
-      items(ids:{item_id}) {{
-        id
-        name
-        updates {{
-          id
-          body
-          created_at
-          creator {{ name }}
-        }}
-      }}
-    }}
-    """
-    data = run_query(query)
-    item = data["items"][0]
-    typer.echo(f"Task {item['id']} : {item['name']}")
-    typer.echo("-" * 50)
-    updates = item["updates"]
-    if not updates:
-        typer.echo("No updates yet.")
-    for u in updates:
-        typer.echo(f"{u['created_at']} [{u['creator']['name']}]: {u['body']}")
-
-@app.command()
 def update(
     item_id: int,
     note: str = typer.Argument(None),
@@ -171,16 +142,16 @@ def update(
     ),
 ):
     """
-    Add a note and/or update the status column of a task.
+    Add a note and/or set the status of a task.
     """
 
     if not note and not set_status:
         typer.secho("❌ You must provide either a note or --set-status.", fg="red")
         raise typer.Exit(1)
 
-    # ----------------------------------------
+    # -----------------------------
     # Add a note (optional)
-    # ----------------------------------------
+    # -----------------------------
     if note:
         mutation = """
         mutation($item_id: ID!, $note: String!) {
@@ -192,41 +163,44 @@ def update(
         data = run_query(mutation, {"item_id": str(item_id), "note": note})
         typer.secho(f"📝 Added note {data['create_update']['id']}", fg="cyan")
 
-    # ----------------------------------------
+    # -----------------------------
     # Update Status column (optional)
-    # ----------------------------------------
+    # -----------------------------
     if set_status:
+        # ✅ MAPPING uses the REAL labels from your board
         status_map = {
             "DONE": "Done",
             "BLOCKED": "Blocked",
-            "TODO": "Todo",
-            "INPROGRESS": "Working on it",
+            "TODO": "To Do",
+            "INPROGRESS": "In Progress",
         }
 
-        if set_status.upper() not in status_map:
+        key = set_status.upper()
+        if key not in status_map:
             typer.secho("❌ Invalid status. Use: DONE | BLOCKED | TODO | INPROGRESS", fg="red")
             raise typer.Exit(1)
 
-        target_status = status_map[set_status.upper()]
+        target_status = status_map[key]
 
-        # ✅ Get board ID from item_id first
-        board_query = f"""
-        {{
-          items(ids:{item_id}) {{
-            board {{ id }}
-          }}
-        }}
-        """
+        # 1) Fetch board ID for this item
+        board_query = """
+        {
+          items(ids: %s) {
+            board { id }
+          }
+        }
+        """ % item_id
+
         board_data = run_query(board_query)
         board_id = board_data["items"][0]["board"]["id"]
 
-        # ✅ Status mutation now includes board_id
+        # 2) Set the status column
         mutation = """
-        mutation($board_id: ID!, $item_id: ID!, $column_id: String!, $value: String!) {
+        mutation($board_id: ID!, $item_id: ID!, $value: JSON!) {
           change_simple_column_value(
             board_id: $board_id,
             item_id: $item_id,
-            column_id: $column_id,
+            column_id: "status",
             value: $value
           ) {
             id
@@ -234,14 +208,14 @@ def update(
         }
         """
 
-        vars = {
+        value_json = {"label": target_status}
+
+        run_query(mutation, {
             "board_id": str(board_id),
             "item_id": str(item_id),
-            "column_id": "status",
-            "value": target_status,
-        }
+            "value": value_json,
+        })
 
-        run_query(mutation, vars)
         typer.secho(f"✅ Updated status → {target_status}", fg="green")
 
 
