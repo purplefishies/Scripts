@@ -132,17 +132,21 @@ def list_board_items(
 # -------------------------------
 import json
 
+import json
+
 @app.command()
 def update(
     item_id: int,
     note: str = typer.Argument(None),
     set_status: str = typer.Option(
-        None, "--set-status", "-s",
-        help="Set task status: DONE | BLOCKED | TODO | INPROGRESS",
+        None,
+        "--set-status",
+        "-s",
+        help="Set task status: DONE | BLOCKED | TODO | INPROGRESS"
     ),
 ):
     """
-    Add a note and/or update the status of a Monday.com item.
+    Add a note and/or change Monday.com task status.
     """
 
     if not note and not set_status:
@@ -150,7 +154,7 @@ def update(
         raise typer.Exit(1)
 
     # --------------------------------------------------------
-    # 1) Add note (optional)
+    # (1) Add note (optional)
     # --------------------------------------------------------
     if note:
         mutation = """
@@ -163,13 +167,12 @@ def update(
         run_query(mutation, {"item_id": str(item_id), "note": note})
         typer.secho(f"📝 Added note to item {item_id}", fg="cyan")
 
-
     # --------------------------------------------------------
-    # 2) Update STATUS via numeric index (the right way)
+    # (2) Update STATUS via NUMERIC index (correct way)
     # --------------------------------------------------------
     if set_status:
 
-        # CLI enum -> Monday numeric status index
+        # CLI → Monday status index (based on YOUR error output)
         status_index_map = {
             "INPROGRESS": 0,
             "DONE": 1,
@@ -184,21 +187,19 @@ def update(
 
         idx = status_index_map[key]
 
-
-        # -- Fetch board_id first --
-        query = """
+        # Fetch board_id associated to item
+        qry = """
         query($item_id: [ID!]) {
           items(ids: $item_id) {
             board { id }
           }
         }
         """
-        board_id = run_query(query, {"item_id": str(item_id)})["items"][0]["board"]["id"]
+        board_id = run_query(qry, {"item_id": str(item_id)})["items"][0]["board"]["id"]
 
-
-        # -- Correct mutation: value MUST be stringified JSON --
+        # ✅ Proper mutation: value is JSON type (NOT string!)
         mutation = """
-        mutation($board_id: ID!, $item_id: ID!, $value: String!) {
+        mutation($board_id: ID!, $item_id: ID!, $value: JSON!) {
           change_column_value(
             board_id: $board_id,
             item_id: $item_id,
@@ -210,15 +211,13 @@ def update(
         }
         """
 
-        # ✅ Send numeric index, JSON encoded into a STRING
-        json_value = json.dumps({"index": idx})
-
-        run_query(mutation, {
+        vars = {
             "board_id": str(board_id),
             "item_id": str(item_id),
-            "value": json_value,
-        })
+            "value": {"index": idx},      # ✅ REAL JSON object, not a string
+        }
 
+        run_query(mutation, vars)
         typer.secho(f"✅ Updated STATUS → {key} (index {idx})", fg="green")
 
 
