@@ -133,7 +133,10 @@ def list_board_items(
 @app.command()
 def update(
     item_id: int,
-    note: str = typer.Argument(None),
+    note: str = typer.Argument(
+        None,
+        help="Optional note to add to this item"
+    ),
     set_status: str = typer.Option(
         None,
         "--set-status",
@@ -142,18 +145,16 @@ def update(
     ),
 ):
     """
-    Add a note and/or set the status of a task.
+    Add a note and/or update the status column of a task.
     """
 
     if not note and not set_status:
         typer.secho("❌ You must provide either a note or --set-status.", fg="red")
         raise typer.Exit(1)
 
-    #
-    # ----------------------------------------
-    # Add note (optional)
-    # ----------------------------------------
-    #
+    # -----------------------------------------------------------
+    # 1. Add note (if specified)
+    # -----------------------------------------------------------
     if note:
         mutation = """
         mutation($item_id: ID!, $note: String!) {
@@ -162,15 +163,15 @@ def update(
           }
         }
         """
-        data = run_query(mutation, {"item_id": str(item_id), "note": note})
-        typer.secho(f"📝 Added note {data['create_update']['id']}", fg="cyan")
+        variables = {"item_id": str(item_id), "note": note}
+        result = run_query(mutation, variables)
+        typer.secho(f"📝 Added note {result['create_update']['id']}", fg="cyan")
 
-    #
-    # ----------------------------------------
-    # Update Status (optional)
-    # ----------------------------------------
-    #
+    # -----------------------------------------------------------
+    # 2. Update status (if specified)
+    # -----------------------------------------------------------
     if set_status:
+        # map CLI → Monday label
         status_map = {
             "DONE": "Done",
             "BLOCKED": "Blocked",
@@ -180,26 +181,26 @@ def update(
 
         key = set_status.upper()
         if key not in status_map:
-            typer.secho("❌ Invalid status. Use: DONE | BLOCKED | TODO | INPROGRESS", fg="red")
+            typer.secho("❌ Invalid status. Use: DONE | BLOCKED | TODO | INPROGRESS.", fg="red")
             raise typer.Exit(1)
 
-        target_status = status_map[key]
+        target_label = status_map[key]
 
-        # 1) Look up board ID
+        # ---- fetch board id from item ----
         board_query = """
-        {
-          items(ids: %s) {
+        query($item_id: [ID!]) {
+          items(ids: $item_id) {
             board { id }
           }
         }
-        """ % item_id
+        """
+        board_data = run_query(board_query, {"item_id": str(item_id)})
+        board_id = board_data["items"][0]["board"]["id"]
 
-        board_id = run_query(board_query)["items"][0]["board"]["id"]
-
-        # 2) Set the status — IMPORTANT: value MUST be a STRING containing JSON
+        # ---- IMPORTANT: correct mutation + real JSON ----
         mutation = """
-        mutation($board_id: ID!, $item_id: ID!, $value: String!) {
-          change_simple_column_value(
+        mutation($board_id: ID!, $item_id: ID!, $value: JSON!) {
+          change_column_value(
             board_id: $board_id,
             item_id: $item_id,
             column_id: "status",
@@ -210,15 +211,15 @@ def update(
         }
         """
 
-        value_string = f'{{"label":"{target_status}"}}'   # <-- JSON as string
-
-        run_query(mutation, {
+        # Monday wants a dict here, NOT a JSON-encoded string
+        variables = {
             "board_id": str(board_id),
             "item_id": str(item_id),
-            "value": value_string,
-        })
+            "value": {"label": target_label},
+        }
 
-        typer.secho(f"✅ Updated status → {target_status}", fg="green")
+        run_query(mutation, variables)
+        typer.secho(f"✅ Updated status → {target_label}", fg="green")
 
 
 # -------------------------------
