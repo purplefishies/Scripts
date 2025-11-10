@@ -171,15 +171,15 @@ def update(
     ),
 ):
     """
-    Add a note and/or set the status of a task.
+    Add a note and/or update the status column of a task.
     """
 
     if not note and not set_status:
-        typer.secho("❌ You must provide either a note or --set-status.", fg=typer.colors.RED)
+        typer.secho("❌ You must provide either a note or --set-status.", fg="red")
         raise typer.Exit(1)
 
     # ----------------------------------------
-    # 1) Add a note (if provided)
+    # Add a note (optional)
     # ----------------------------------------
     if note:
         mutation = """
@@ -189,13 +189,11 @@ def update(
           }
         }
         """
-        variables = {"item_id": str(item_id), "note": note}
-        data = run_query(mutation, variables)
-        update_id = data["create_update"]["id"]
-        typer.secho(f"📝 Added note {update_id}", fg="cyan")
+        data = run_query(mutation, {"item_id": str(item_id), "note": note})
+        typer.secho(f"📝 Added note {data['create_update']['id']}", fg="cyan")
 
     # ----------------------------------------
-    # 2) Update status column (if provided)
+    # Update Status column (optional)
     # ----------------------------------------
     if set_status:
         status_map = {
@@ -211,26 +209,41 @@ def update(
 
         target_status = status_map[set_status.upper()]
 
+        # ✅ Get board ID from item_id first
+        board_query = f"""
+        {{
+          items(ids:{item_id}) {{
+            board {{ id }}
+          }}
+        }}
+        """
+        board_data = run_query(board_query)
+        board_id = board_data["items"][0]["board"]["id"]
+
+        # ✅ Status mutation now includes board_id
         mutation = """
-        mutation($item_id: ID!, $column_id: String!, $status: String!) {
+        mutation($board_id: ID!, $item_id: ID!, $column_id: String!, $value: String!) {
           change_simple_column_value(
+            board_id: $board_id,
             item_id: $item_id,
             column_id: $column_id,
-            value: $status
+            value: $value
           ) {
             id
           }
         }
         """
 
-        variables = {
+        vars = {
+            "board_id": str(board_id),
             "item_id": str(item_id),
-            "column_id": "status",  # <-- Assumes the status column is literally named "status"
-            "status": target_status,
+            "column_id": "status",
+            "value": target_status,
         }
 
-        run_query(mutation, variables)
-        typer.secho(f"✅ Updated STATUS → {target_status}", fg="green")
+        run_query(mutation, vars)
+        typer.secho(f"✅ Updated status → {target_status}", fg="green")
+
 
 # -------------------------------
 # Entry
