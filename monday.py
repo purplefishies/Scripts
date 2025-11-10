@@ -160,21 +160,77 @@ def show(item_id: int):
         typer.echo(f"{u['created_at']} [{u['creator']['name']}]: {u['body']}")
 
 @app.command()
-def update(item_id: int, note: str):
+def update(
+    item_id: int,
+    note: str = typer.Argument(None),
+    set_status: str = typer.Option(
+        None,
+        "--set-status",
+        "-s",
+        help="Set task status: DONE | BLOCKED | TODO | INPROGRESS",
+    ),
+):
     """
-    Add a note (update) to a task
+    Add a note and/or set the status of a task.
     """
-    query = """
-    mutation($item_id: ID!, $note: String!) {
-      create_update(item_id: $item_id, body: $note) {
-        id
-      }
-    }
-    """
-    variables = {"item_id": str(item_id), "note": note}
-    data = run_query(query, variables)
-    update_id = data["create_update"]["id"]
-    typer.echo(f"✅ Added note {update_id} to item {item_id}")
+
+    if not note and not set_status:
+        typer.secho("❌ You must provide either a note or --set-status.", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    # ----------------------------------------
+    # 1) Add a note (if provided)
+    # ----------------------------------------
+    if note:
+        mutation = """
+        mutation($item_id: ID!, $note: String!) {
+          create_update(item_id: $item_id, body: $note) {
+            id
+          }
+        }
+        """
+        variables = {"item_id": str(item_id), "note": note}
+        data = run_query(mutation, variables)
+        update_id = data["create_update"]["id"]
+        typer.secho(f"📝 Added note {update_id}", fg="cyan")
+
+    # ----------------------------------------
+    # 2) Update status column (if provided)
+    # ----------------------------------------
+    if set_status:
+        status_map = {
+            "DONE": "Done",
+            "BLOCKED": "Blocked",
+            "TODO": "Todo",
+            "INPROGRESS": "Working on it",
+        }
+
+        if set_status.upper() not in status_map:
+            typer.secho("❌ Invalid status. Use: DONE | BLOCKED | TODO | INPROGRESS", fg="red")
+            raise typer.Exit(1)
+
+        target_status = status_map[set_status.upper()]
+
+        mutation = """
+        mutation($item_id: ID!, $column_id: String!, $status: String!) {
+          change_simple_column_value(
+            item_id: $item_id,
+            column_id: $column_id,
+            value: $status
+          ) {
+            id
+          }
+        }
+        """
+
+        variables = {
+            "item_id": str(item_id),
+            "column_id": "status",  # <-- Assumes the status column is literally named "status"
+            "status": target_status,
+        }
+
+        run_query(mutation, variables)
+        typer.secho(f"✅ Updated STATUS → {target_status}", fg="green")
 
 # -------------------------------
 # Entry
