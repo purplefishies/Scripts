@@ -116,9 +116,14 @@ def list_board_items(
 
         # Colorize only the name
         if colorize:
-            if status_text.lower() in ("done", "complete", "closed", "finished"):
+            status_lower = status_text.lower()
+
+            if "blocked" in status_lower:
+                name = f"[bold red]{name}[/bold red]"
+            elif status_lower in ("done", "complete", "closed", "finished"):
                 name = f"[bold green]{name}[/bold green]"
             else:
+                # Orange for everything else (in progress, to do, etc.)
                 name = f"[bold #ff6600]{name}[/bold #ff6600]"
 
         # Right-align and pad ID based on max width
