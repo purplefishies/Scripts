@@ -131,73 +131,61 @@ def list_board_items(
 # Items Commands (kept flat)
 # -------------------------------
 import json
-
-import json
+import typer
 
 @app.command()
 def update(
     item_id: int,
     note: str = typer.Argument(None),
     set_status: str = typer.Option(
-        None,
-        "--set-status",
-        "-s",
-        help="Set task status: DONE | BLOCKED | TODO | INPROGRESS"
+        None, "--set-status", "-s",
+        help="Set task status: DONE | BLOCKED | TODO | INPROGRESS",
     ),
 ):
     """
-    Add a note and/or change Monday.com task status.
+    Add a note and/or update the Status column of an item.
+    Uses numeric status indexes and passes value as a JSON *string*
+    while the GraphQL var is typed JSON! (Monday's requirement).
     """
 
     if not note and not set_status:
         typer.secho("❌ You must provide either a note or --set-status.", fg="red")
         raise typer.Exit(1)
 
-    # --------------------------------------------------------
-    # (1) Add note (optional)
-    # --------------------------------------------------------
+    # 1) Optional: add note
     if note:
         mutation = """
         mutation($item_id: ID!, $note: String!) {
-          create_update(item_id: $item_id, body: $note) {
-            id
-          }
+          create_update(item_id: $item_id, body: $note) { id }
         }
         """
         run_query(mutation, {"item_id": str(item_id), "note": note})
         typer.secho(f"📝 Added note to item {item_id}", fg="cyan")
 
-    # --------------------------------------------------------
-    # (2) Update STATUS via NUMERIC index (correct way)
-    # --------------------------------------------------------
+    # 2) Optional: set status
     if set_status:
-
-        # CLI → Monday status index (based on YOUR error output)
         status_index_map = {
             "INPROGRESS": 0,
             "DONE": 1,
             "BLOCKED": 2,
             "TODO": 5,
         }
-
         key = set_status.upper()
         if key not in status_index_map:
             typer.secho("❌ Invalid status. Use: DONE | BLOCKED | TODO | INPROGRESS", fg="red")
             raise typer.Exit(1)
 
-        idx = status_index_map[key]
-
-        # Fetch board_id associated to item
-        qry = """
+        # fetch board_id for this item
+        board_query = """
         query($item_id: [ID!]) {
-          items(ids: $item_id) {
-            board { id }
-          }
+          items(ids: $item_id) { board { id } }
         }
         """
-        board_id = run_query(qry, {"item_id": str(item_id)})["items"][0]["board"]["id"]
+        board_id = run_query(board_query, {"item_id": str(item_id)})["items"][0]["board"]["id"]
 
-        # ✅ Proper mutation: value is JSON type (NOT string!)
+        # IMPORTANT:
+        # - var type is JSON!
+        # - value MUST be a JSON STRING (e.g., '{"index":1}')
         mutation = """
         mutation($board_id: ID!, $item_id: ID!, $value: JSON!) {
           change_column_value(
@@ -205,20 +193,20 @@ def update(
             item_id: $item_id,
             column_id: "status",
             value: $value
-          ) {
-            id
-          }
+          ) { id }
         }
         """
+
+        value_json_string = json.dumps({"index": status_index_map[key]})  # e.g., '{"index":1}'
 
         vars = {
             "board_id": str(board_id),
             "item_id": str(item_id),
-            "value": {"index": idx},      # ✅ REAL JSON object, not a string
+            "value": value_json_string,  # JSON! var receiving a JSON-encoded string
         }
-
         run_query(mutation, vars)
-        typer.secho(f"✅ Updated STATUS → {key} (index {idx})", fg="green")
+        typer.secho(f"✅ Updated STATUS → {key} (index {status_index_map[key]})", fg="green")
+
 
 
 # -------------------------------
