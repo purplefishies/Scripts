@@ -138,7 +138,8 @@ def upload(
     confluence = Confluence(url=CONFLUENCE_URL, username=AUTH_EMAIL, password=API_TOKEN, cloud=True)
 
     # --- Parse HTML file ---
-    soup = BeautifulSoup(html.read_text(encoding="utf-8"), "html.parser")
+    soup = BeautifulSoup(html.read_text(encoding="utf-8"), "lxml")
+    # soup = BeautifulSoup(html.read_text(encoding="utf-8"), "html.parser")
     html_dir = html.parent
 
     # ✅ Page MUST exist to upload attachments
