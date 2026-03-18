@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+# Open a pipe to /bin/ls with all original arguments
+open(my $ls, "-|", "/bin/ls", @ARGV)
+    or die "Failed to exec /bin/ls: $!";
+
+while (my $line = <$ls>) {
+    # Apply your substitutions
+    # $line =~ s@AV-516XNG4//wsl.localhost@//wsl.localhost@g;
+    $line =~ s@AV-516XNG4@//wsl.localhost/Ubuntu-24.04@g;
+    $line =~ s@//wsl.localhost/Ubuntu-24.04/mnt/c@c:@g;
+    # $line =~ s@AV-516XNG4@C:@g;
+    # $line =~ s@/cygdrive/c@@;
+    # $line =~ s@c:/home@c:/cygwin64/home@gi;
+
+    print $line;
+}
+
+close($ls);
+
