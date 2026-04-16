@@ -1,16 +1,30 @@
 #!/bin/bash
 
+
+
+function in_tmux_passthrough() {
+    [[ -n "$TMUX" || "$TERM" == screen* || "$TERM" == tmux* ]]
+}
 # tmux requires unrecognized OSC sequences to be wrapped with DCS tmux;
 # <sequence> ST, and for all ESCs in <sequence> to be replaced with ESC ESC. It
 # only accepts ESC backslash for ST. We use TERM instead of TMUX because TERM
 # gets passed through ssh.
 function print_osc() {
-    if [[ $TERM == screen* ]] ; then
-        printf "\033Ptmux;\033\033]"
+    if in_tmux_passthrough; then
+        printf '\033Ptmux;\033\033]'
     else
-        printf "\033]"
+        printf '\033]'
     fi
 }
+
+function print_st() {
+    if in_tmux_passthrough; then
+        printf '\a\033\\'
+    else
+        printf '\a'
+    fi
+}
+
 
 # More of the tmux workaround described above.
 function print_st() {
