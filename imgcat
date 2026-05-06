@@ -25,13 +25,20 @@ function print_st() {
     fi
 }
 
-
 # More of the tmux workaround described above.
+# function print_st() {
+#     if [[ $TERM == screen* ]] ; then
+#         printf "\a\033\\"
+#     else
+#         printf "\a"
+#     fi
+# }
+
 function print_st() {
-    if [[ $TERM == screen* ]] ; then
-        printf "\a\033\\"
+    if in_tmux_passthrough; then
+        printf '\a\033\\'
     else
-        printf "\a"
+        printf '\a'
     fi
 }
 
