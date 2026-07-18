@@ -1,29 +1,59 @@
 #!/usr/bin/perl
 
+use strict;
+use warnings;
 use File::Temp qw(tempfile);
 
-my ($fh ,$file) = tempfile();
-open(CMD, "|gnuchess -g -q | perl -ne 'if( !/^(GNU|White|Time|^ +|^ *\$)/ ) { print; }'");
-if ( ! -f $ARGV[0]) {
-    $ff = $file;
-    print $fh "$ARGV[0]\n";
-} else {
-    while(<>) {
-        chomp;
-        if ( -f $_ ) {
-            #print CMD "epdload ${_}\nexit\n";
-            $ff = $_;
-        } else {
-            chomp;
-            print $fh "$_\n";
-            # close($fh);
-            # print CMD "epdload ${file}\nexit\n";
-            $ff = ${file}
-        }
-        last;
-    }
-}
-close($fh);
-print CMD "epdload ${ff}\nexit\n";
+my ($fen_fh, $fen_file) = tempfile();
+my ($cmd_fh, $cmd_file) = tempfile();
 
-close(CMD);
+my $ff;
+
+if (@ARGV && -f $ARGV[0]) {
+    $ff = $ARGV[0];
+}
+else {
+    my $fen = @ARGV ? join(" ", @ARGV) : <STDIN>;
+
+    die "No FEN supplied\n" unless defined $fen;
+
+    chomp $fen;
+    print {$fen_fh} "$fen\n";
+    close $fen_fh;
+
+    $ff = $fen_file;
+}
+
+print {$cmd_fh} "force\n";
+print {$cmd_fh} "epdload $ff\n";
+print {$cmd_fh} "exit\n";
+print {$cmd_fh} "quit\n";
+close $cmd_fh;
+
+open(
+    my $output,
+    "-|",
+    "sh", "-c",
+    q{gnuchess -g -q < "$1"},
+    "sh",
+    $cmd_file
+) or die "Cannot start gnuchess: $!\n";
+
+while (my $line = <$output>) {
+    next if $line =~ /^(GNU|White|Time|\s*:\s*best move)/i;
+    next if $line =~ /^\s*$/;
+    next if $line =~ /^\s*\$/;
+
+    print $line;
+}
+
+close $output;
+
+if ($? != 0) {
+    warn sprintf(
+        "gnuchess exited abnormally: status=%d signal=%d\n",
+        $? >> 8,
+        $? & 127
+    );
+}
+
